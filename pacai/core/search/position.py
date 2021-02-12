@@ -76,6 +76,7 @@ class PositionSearchProblem(SearchProblem):
 
     def actionsCost(self, actions):
         """
+
         Returns the cost of a particular sequence of actions.
         If those actions include an illegal move, return 999999.
         """

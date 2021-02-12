@@ -7,12 +7,15 @@ Good luck and happy searching!
 
 import logging
 
+
 from pacai.core.actions import Actions
+from pacai.core.directions import Directions
 from pacai.core.search import heuristic
 from pacai.core.search.position import PositionSearchProblem
 from pacai.core.search.problem import SearchProblem
 from pacai.agents.base import BaseAgent
 from pacai.agents.search.base import SearchAgent
+
 
 class CornersProblem(SearchProblem):
     """
@@ -58,13 +61,59 @@ class CornersProblem(SearchProblem):
         top = self.walls.getHeight() - 2
         right = self.walls.getWidth() - 2
 
+        self.goal = [(True, (1, 1)), (True, (1, top)), (True, (right, 1)), (True, (right, top))]
+
         self.corners = ((1, 1), (1, top), (right, 1), (right, top))
+        self.visitedGoals = set()
+
         for corner in self.corners:
             if not startingGameState.hasFood(*corner):
                 logging.warning('Warning: no food in corner ' + str(corner))
 
-        # *** Your Code Here ***
-        raise NotImplementedError()
+    def startingState(self):
+        return self.startingPosition
+
+    def isGoal(self, state):
+        if state in self.corners and (state not in self.visitedGoals):
+            self.visitedGoals.add(state)
+
+        if len(self.visitedGoals) == 4:
+
+            # Register the locations we have visited.
+            # This allows the GUI to highlight them.
+            self._visitedLocations.add(state)
+            self._visitHistory.append(state)
+
+            return True
+
+        return False
+
+    def successorStates(self, state):
+        """
+        Returns successor states, the actions they require, and a constant cost of 1.
+        """
+        successors = []
+
+        for action in Directions.CARDINAL:
+            x, y = state
+            dx, dy = Actions.directionToVector(action)
+            nextx, nexty = int(x + dx), int(y + dy)
+
+            if not self.walls[nextx][nexty]:
+                nextState = (nextx, nexty)
+                successors.append((nextState, action, 1))
+
+                for corner in self.corners:
+                    if corner == nextState:
+                        successors.append((state, Actions.reverseDirection(action), 1))
+
+        # Bookkeeping for display purposes (the highlight in the GUI).
+        self._numExpanded += 1
+        if (state not in self._visitedLocations):
+            self._visitedLocations.add(state)
+            self._visitHistory.append(state)
+
+        return successors
 
     def actionsCost(self, actions):
         """
@@ -73,7 +122,7 @@ class CornersProblem(SearchProblem):
         This is implemented for you.
         """
 
-        if (actions is None):
+        if actions is None:
             return 999999
 
         x, y = self.startingPosition
@@ -84,6 +133,7 @@ class CornersProblem(SearchProblem):
                 return 999999
 
         return len(actions)
+
 
 def cornersHeuristic(state, problem):
     """
@@ -96,11 +146,18 @@ def cornersHeuristic(state, problem):
     """
 
     # Useful information.
-    # corners = problem.corners  # These are the corner coordinates
-    # walls = problem.walls  # These are the walls of the maze, as a Grid.
-
-    # *** Your Code Here ***
+    """corners = problem.corners  # These are the corner coordinates
+    walls = problem.walls  # These are the walls of the maze, as a Grid.
+    successors = state.successorStates(state)
+    print("CORNERS " +str(corners))
+    print("STATE " +str(state))
+       current = 999999
+    for corner in problem.goal:
+        if state - state
+    goal = problem.goal
+    return heuristic.manhattan(state,goal)"""
     return heuristic.null(state, problem)  # Default to trivial solution
+
 
 def foodHeuristic(state, problem):
     """
@@ -131,10 +188,19 @@ def foodHeuristic(state, problem):
     Subsequent calls to this heuristic can access problem.heuristicInfo['wallCount'].
     """
 
-    position, foodGrid = state
+    foodLeft = heuristic.numFood(state, problem)
 
-    # *** Your Code Here ***
-    return heuristic.null(state, problem)  # Default to the null heuristic.
+    """
+    position, foodGrid = state
+    curDist = -1
+    count = 0
+    for food in foodGrid:
+        curDist = +distance.manhattan(position, food)
+        count = +1
+    averageDist = curDist/count"""
+
+    return foodLeft
+
 
 class ClosestDotSearchAgent(SearchAgent):
     """
@@ -150,7 +216,7 @@ class ClosestDotSearchAgent(SearchAgent):
 
         currentState = state
 
-        while (currentState.getFood().count() > 0):
+        while currentState.getFood().count() > 0:
             nextPathSegment = self.findPathToClosestDot(currentState)  # The missing piece
             self._actions += nextPathSegment
 

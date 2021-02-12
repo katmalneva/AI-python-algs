@@ -1,7 +1,11 @@
 import random
-
 from pacai.agents.base import BaseAgent
 from pacai.agents.search.multiagent import MultiAgentSearchAgent
+from random import randrange
+from pacai.core import distance
+from pacai.core.directions import Directions
+
+previousStates = list()
 
 class ReflexAgent(BaseAgent):
     """
@@ -31,6 +35,7 @@ class ReflexAgent(BaseAgent):
         legalMoves = gameState.getLegalActions()
 
         # Choose one of the best actions.
+
         scores = [self.evaluationFunction(gameState, action) for action in legalMoves]
         bestScore = max(scores)
         bestIndices = [index for index in range(len(scores)) if scores[index] == bestScore]
@@ -48,17 +53,48 @@ class ReflexAgent(BaseAgent):
         in your evaluation function.
         """
 
+        foodScore = 0
+        ghostScore = 0
+        scaredScore = 0
+        stallScore = 0
+
+        addedNumtoCord = -1
+
+        # to prevent ghost from getting stuck in the same position
+        if action == 'Stop':
+            stallScore = 5
+
         successorGameState = currentGameState.generatePacmanSuccessor(action)
+        newPosition = successorGameState.getPacmanPosition()
 
-        # Useful information you can extract.
-        # newPosition = successorGameState.getPacmanPosition()
-        # oldFood = currentGameState.getFood()
-        # newGhostStates = successorGameState.getGhostStates()
-        # newScaredTimes = [ghostState.getScaredTimer() for ghostState in newGhostStates]
+        oldFood = currentGameState.getFood()
+        for i in range(3):
+            checkFoodx = newPosition[0] + addedNumtoCord
+            checkFoody = newPosition[1] + addedNumtoCord
 
-        # *** Your Code Here ***
+            if oldFood[checkFoodx][checkFoody]:
+                foodScore = foodScore + 1
+                # if current position is food increase foodScore +1 again
+                if checkFoodx == newPosition[0]:
+                    foodScore = foodScore + 1
+            addedNumtoCord = addedNumtoCord + 1
 
-        return successorGameState.getScore()
+        newGhostStates = successorGameState.getGhostStates()
+        for ghost in newGhostStates:
+            ghostPos = ghost.getPosition()
+            if abs(newPosition[0] - ghostPos[0]) < 2 and abs(newPosition[1] - ghostPos[1]) < 2:
+                ghostScore = 10
+
+        newScaredTimes = [ghostState.getScaredTimer() for ghostState in newGhostStates]
+        for scared in newScaredTimes:
+            if scared == 1:
+                scaredScore = scaredScore + 3
+                if ghostScore == 10:
+                    # if there is a ghost nearby and it is scared add more to cancel out ghostScore
+                    scaredScore = scaredScore + 6
+
+        return successorGameState.getScore() - ghostScore + foodScore + scaredScore - stallScore
+
 
 class MinimaxAgent(MultiAgentSearchAgent):
     """
@@ -88,7 +124,57 @@ class MinimaxAgent(MultiAgentSearchAgent):
     """
 
     def __init__(self, index, **kwargs):
-        super().__init__(index)
+        super().__init__(index, **kwargs)
+
+    def getAction(self, state):
+        """The BaseAgent will receive an `pacai.core.gamestate.AbstractGameState`,
+        and must return an action from `pacai.core.directions.Directions`."""
+
+        action, move = self.minimax(state, 0, 0)
+        return action
+
+    def minimax(self, state, depth, index):
+        action, move = self.maxVal(state, depth, index)
+        return action, move
+
+    def maxVal(self, state, depth, index):
+        if depth == self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions():
+            action, score = \
+                self.minVal(state.generateSuccessor(index, a), depth, index + 1)
+            scores.append(score)
+
+        bestScore = max(scores)
+        bestIndinces = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndinces)
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
+    def minVal(self, state, depth, index):
+        if depth == self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions(index):
+            if index == state.getNumAgents() - 1:
+                action, score = \
+                    self.maxVal(state.generateSuccessor(index, a), depth + 1, 0)
+                scores.append(score)
+
+            else:
+                action, score = \
+                    self.minVal(state.generateSuccessor(index, a), depth, index + 1)
+                scores.append(score)
+
+        bestScore = min(scores)
+        bestIndinces = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndinces)
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
@@ -103,7 +189,63 @@ class AlphaBetaAgent(MultiAgentSearchAgent):
     """
 
     def __init__(self, index, **kwargs):
-        super().__init__(index)
+        super().__init__(index, **kwargs)
+
+    def getAction(self, state):
+        """The BaseAgent will receive an `pacai.core.gamestate.AbstractGameState`,
+        and must return an action from `pacai.core.directions.Directions`."""
+        action, move = self.alphaBeta(state, 0, 0)
+        return action
+
+    def alphaBeta(self, state, depth, index):
+        action, move = self.maxVal(state, depth, index, -9999999, 9999999)
+        return action, move
+
+    def maxVal(self, state, depth, index, alpha, beta):
+        if depth == self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions():
+            action, score = self.\
+                minVal(state.generateSuccessor(index, a), depth, index + 1, alpha, beta)
+            scores.append(score)
+            bestScore = max(scores)
+            alpha = max(alpha, bestScore)
+            if bestScore >= beta:
+                break
+
+        bestIndinces = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndinces)
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
+    def minVal(self, state, depth, index, alpha, beta):
+        if depth == self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions(index):
+            if index == state.getNumAgents() - 1:
+                action, score = self.\
+                    maxVal(state.generateSuccessor(index, a), depth + 1, 0, alpha, beta)
+                scores.append(score)
+
+            else:
+                action, score = self.\
+                    minVal(state.generateSuccessor(index, a), depth, index + 1, alpha, beta)
+                scores.append(score)
+
+            bestScore = min(scores)
+            beta = min(beta, bestScore)
+            if bestScore <= alpha:
+                break
+
+        bestIndinces = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndinces)
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
@@ -120,16 +262,103 @@ class ExpectimaxAgent(MultiAgentSearchAgent):
     """
 
     def __init__(self, index, **kwargs):
-        super().__init__(index)
+        super().__init__(index, **kwargs)
+
+    def getAction(self, state):
+        """The BaseAgent will receive an `pacai.core.gamestate.AbstractGameState`,
+        and must return an action from `pacai.core.directions.Directions`."""
+        global previousStates
+        if len(previousStates) < 100:
+            previousStates.append(state)
+
+        action, move = self.expectimax(state, 0, 0)
+        return action
+
+    def expectimax(self, state, depth, index):
+        action, move = self.maxVal(state, depth, index)
+        return action, move
+
+    def maxVal(self, state, depth, index):
+        if depth == \
+                self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions():
+            action, score = \
+                self.expecVal(state.generateSuccessor(index, a), depth, index + 1)
+            scores.append(score)
+
+        bestScore = max(scores)
+        bestIndinces = [index for index in range(len(scores)) if scores[index] == bestScore]
+        chosenIndex = random.choice(bestIndinces)
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
+    def expecVal(self, state, depth, index):
+        if depth == self.getTreeDepth() or state.isLose() or state.isWin():
+            return Directions.STOP, self.getEvaluationFunction()(state)
+
+        scores = []
+        for a in state.getLegalActions(index):
+            if index == state.getNumAgents() - 1:
+                action, score = self.\
+                    maxVal(state.generateSuccessor(index, a), depth + 1, 0)
+                probScore = (1 / len(state.getLegalActions(index))) * score
+                scores.append(probScore)
+
+            else:
+                action, score = self.\
+                    expecVal(state.generateSuccessor(index, a), depth, index + 1)
+                probScore = (1 / len(state.getLegalActions(index))) * score
+                scores.append(probScore)
+
+        bestScore = sum(scores)
+        chosenIndex = randrange(len(scores))
+
+        return state.getLegalActions(index)[chosenIndex], bestScore
+
 
 def betterEvaluationFunction(currentGameState):
-    """
-    Your extreme ghost-hunting, pellet-nabbing, food-gobbling, unstoppable evaluation function.
+    """Your extreme ghost-hunting, pellet-nabbing, food-gobbling,
+    unstoppable evaluation function.
+    DESCRIPTION: I checked for distance to closest food and added
+    that to score, if the food pellet was the last to win the game
+    I added 200 points. If a ghost was in range of 2 spaces from pacman
+    I took away 1000 points. If the state was previously visited
+    I subtracted a few points to prevent epetition."""
 
-    DESCRIPTION: <write something here so we know what you did>
-    """
+    oldFood = currentGameState.getFood()
+    newGhostState = currentGameState.getGhostStates()
 
-    return currentGameState.getScore()
+    foodDistList = []
+
+    lastFood = 0
+    ghostClose = 0
+    visited = 0
+    closestFood = 0
+
+    for food in oldFood.asList():
+        foodDist = distance.manhattan(currentGameState.getPacmanPosition(), food)
+        foodDistList.append(foodDist)
+
+    if len(foodDistList) > 0:
+        closestFood = min(foodDistList)
+        closestFood = 1 / closestFood
+
+    if currentGameState.getPacmanPosition() == currentGameState.isWin():
+        lastFood = lastFood + 200
+
+    for ghost in newGhostState:
+        ghostDist = distance.manhattan(currentGameState.getPacmanPosition(), ghost.getPosition())
+        if ghostDist <= 2:
+            ghostClose = ghostClose + 1000
+
+    if currentGameState in previousStates:
+        visited = visited + 20
+
+    return currentGameState.getScore() - visited - ghostClose + closestFood + lastFood
+
 
 class ContestAgent(MultiAgentSearchAgent):
     """

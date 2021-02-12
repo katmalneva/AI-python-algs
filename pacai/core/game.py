@@ -31,7 +31,6 @@ class Game:
         """
 
         self.numMoves = 0
-
         agentIndex = self.startingIndex
         numAgents = len(self.agents)
 

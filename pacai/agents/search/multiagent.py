@@ -10,6 +10,7 @@ class MultiAgentSearchAgent(BaseAgent):
         super().__init__(index)
 
         self._evaluationFunction = reflection.qualifiedImport(evalFn)
+
         self._treeDepth = int(depth)
 
     def getEvaluationFunction(self):

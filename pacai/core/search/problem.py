@@ -40,7 +40,6 @@ class SearchProblem(abc.ABC):
 
         Returns the total cost of a particular sequence of legal actions.
         """
-
         pass
 
     def getExpandedCount(self):
@@ -57,8 +56,15 @@ class SearchProblem(abc.ABC):
 
         Returns True if and only if the state is a valid goal state.
         """
+        if (state != self.goal):
+            return False
 
-        pass
+        # Register the locations we have visited.
+        # This allows the GUI to highlight them.
+        self._visitedLocations.add(state)
+        self._visitHistory.append(state)
+
+        return True
 
     @abc.abstractmethod
     def startingState(self):

@@ -5,12 +5,14 @@ goal in the provided `pacai.core.search.problem.SearchProblem`.
 
 from pacai.core import distance
 
+
 def null(state, problem = None):
     """
     This heuristic is trivial.
     """
 
     return 0
+
 
 def manhattan(position, problem):
     """
@@ -22,6 +24,7 @@ def manhattan(position, problem):
 
     return distance.manhattan(position1, position2)
 
+
 def euclidean(position, problem):
     """
     This heuristic is the euclidean distance to the goal.
@@ -31,6 +34,7 @@ def euclidean(position, problem):
     position2 = problem.goal
 
     return distance.euclidean(position1, position2)
+
 
 def numFood(state, problem):
     """

@@ -193,7 +193,8 @@ class EightPuzzleSearchProblem(SearchProblem):
 
         super().__init__()
 
-        self.puzzle = puzzle
+        self.\
+            puzzle = puzzle
 
     def startingState(self):
         return self.puzzle
