@@ -1,22 +1,26 @@
-from pacai.util import reflection
 from pacai.agents.capture.capture import CaptureAgent
 from pacai.core.directions import Directions
 from pacai.core.actions import Actions
 from pacai.core.search.position import PositionSearchProblem
 from pacai.core.search.heuristic import null
+from pacai.student.myTeam import AstarTransform
 from pacai.util import reflection
 from pacai.util import util
 from pacai.util import counter
 from pacai.util import queue
 from pacai.util import priorityQueue
+from pacai.util.priorityQueue import PriorityQueue
 from pacai.bin.capture import CaptureGameState
 import random
 import copy
 
+# information shared by teammates
+# implement
 
-def createTeam(firstIndex, secondIndex, isRed,
-               first='pacai.agents.student.myTeam.AstarTransform',
-               second='pacai.agents.student.myTeam.AstarTransform'):
+DistToInvader = []
+
+
+def createTeam(firstIndex, secondIndex, isRed):
     # first = 'pacai.agents.capture.offense.OffensiveReflexAgent',
     # second = 'pacai.agents.capture.defense.DefensiveReflexAgent'):
     """
@@ -27,18 +31,13 @@ def createTeam(firstIndex, secondIndex, isRed,
     """
 
     firstAgent = AstarTransform
-    secondAgent = AstarTransform
+    secondAgent = AstarTransformlol
 
     return [
         firstAgent(firstIndex),
         secondAgent(secondIndex),
     ]
 
-
-# information shared by teammates
-# implement
-IdentifiedInvaders = []
-DistToInvader = []
 
 class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureAgent and ReflexCaptureAgent)
 
@@ -113,6 +112,9 @@ class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureA
                 foods.append((food, openDirections))
                 # print("foods: ", foods)
         return foods
+
+
+
 
     def successorStates(self, state):
         """
@@ -355,7 +357,12 @@ class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureA
                     cur_state[1].add(cur_state[0])
 
             if problem.isGoal(cur_state):
-
+                # if self.index == 2:
+                #     print("problem: ", problem)
+                #     print("starting: ", problem.startingState())
+                #     print(cur_state)
+                # print("path: ", path)
+                # print("---------------")
                 return path
             else:
 
@@ -402,7 +409,7 @@ class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureA
 """
 Sheng's implementation of AStar
 """
-class AstarTransform(BaseAgent):
+class AstarTransformlol(BaseAgent):
     """
     A reflex agent that tries to keep its side Pacman-free.
     This is to give you an idea of what a defensive agent could be like.
@@ -484,12 +491,11 @@ class AstarTransform(BaseAgent):
         opponents = [gameState.getAgentState(opponent) for opponent in self.getOpponents(gameState)]
         invaders = [invader for invader in opponents if invader.isPacman()]
 
-        dist_from_defenders_to_invaders = priorityQueue.PriorityQueue()
+        dist_from_defenders_to_invaders = PriorityQueue()
         for agent in agentLocations:
             for invader in invaders:
                 mazeDist = self.getMazeDistance(invader.getPosition(), agent)
                 dist_from_defenders_to_invaders.push((agent, invader, mazeDist), mazeDist)
-
 
         minDistOne = dist_from_defenders_to_invaders.pop()
         if len(invaders) > 1:

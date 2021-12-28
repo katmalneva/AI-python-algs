@@ -452,7 +452,7 @@ class AgentRules:
                 continue
 
             # If we are a brave ghost or they are a scared ghost, then we will eat them.
-            # Otherwise, we are being eatten.
+            # Otherwise, we ae being eatten.
             if (agentState.isBraveGhost() or otherAgentState.isScaredGhost()):
                 state.addScore(teamPointModifier * KILL_POINTS)
                 otherAgentState.respawn()

@@ -1,6 +1,7 @@
 from pacai.agents.learning.value import ValueEstimationAgent
 from pacai.util import counter
 
+
 class ValueIterationAgent(ValueEstimationAgent):
     """
     A value iteration agent.
@@ -32,15 +33,52 @@ class ValueIterationAgent(ValueEstimationAgent):
     """
 
     def __init__(self, index, mdp, discountRate = 0.9, iters = 100, **kwargs):
-        super().__init__(index)
+        super().__init__(index, **kwargs)
 
         self.mdp = mdp
         self.discountRate = discountRate
         self.iters = iters
         self.values = counter.Counter()  # A Counter is a dict with default 0
+        self.errorVal = 1 - discountRate
 
-        # Compute the values here.
-        raise NotImplementedError()
+        for i in range(iters):
+            self.newValues = counter.Counter()
+
+            for state in self.mdp.getStates():
+                if self.mdp.isTerminal(state):
+                    self.newValues[state] = 0
+                    continue
+                self.qvals = counter.Counter()
+
+                for action in self.mdp.getPossibleActions(state):
+                    qval = self.getQValue(state, action)
+                    self.qvals[action] = qval
+                    maxQval = self.qvals.argMax()
+                    self.newValues[state] = self.qvals[maxQval]
+            self.values = self.newValues
+
+    def getQValue(self, state, action):
+        """
+        Should return Q(state,action).
+        """
+        val = 0
+        for nextState, prob in self.mdp.getTransitionStatesAndProbs(state, action):
+            vstar = self.getValue(nextState)
+            val += prob * (self.mdp.getReward(state, action, nextState) + self.discountRate * vstar)
+
+        return val
+
+    def getPolicy(self, state):
+
+        if self.mdp.isTerminal(state):
+            return None
+
+        policy = counter.Counter()
+        for a in self.mdp.getPossibleActions(state):
+            policy[a] = self.getQValue(state, a)
+
+        action = policy.argMax()
+        return action
 
     def getValue(self, state):
         """
@@ -53,5 +91,4 @@ class ValueIterationAgent(ValueEstimationAgent):
         """
         Returns the policy at the state (no exploration).
         """
-
         return self.getPolicy(state)

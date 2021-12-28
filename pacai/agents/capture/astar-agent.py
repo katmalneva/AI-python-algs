@@ -1,4 +1,3 @@
-from pacai.util import reflection
 from pacai.agents.capture.capture import CaptureAgent
 from pacai.core.directions import Directions
 from pacai.core.actions import Actions
@@ -9,36 +8,19 @@ from pacai.util import util
 from pacai.util import counter
 from pacai.util import queue
 from pacai.util import priorityQueue
-from pacai.bin.capture import CaptureGameState
+
 import random
 import copy
-
-
-def createTeam(firstIndex, secondIndex, isRed,
-               first='pacai.agents.student.myTeam.AstarTransform',
-               second='pacai.agents.student.myTeam.AstarTransform'):
-    # first = 'pacai.agents.capture.offense.OffensiveReflexAgent',
-    # second = 'pacai.agents.capture.defense.DefensiveReflexAgent'):
-    """
-    This function should return a list of two agents that will form the capture team,
-    initialized using firstIndex and secondIndex as their agent indexed.
-    isRed is True if the red team is being created,
-    and will be False if the blue team is being created.
-    """
-
-    firstAgent = AstarTransform
-    secondAgent = AstarTransform
-
-    return [
-        firstAgent(firstIndex),
-        secondAgent(secondIndex),
-    ]
-
 
 # information shared by teammates
 # implement
 IdentifiedInvaders = []
 DistToInvader = []
+
+two_invader_def =("",0)
+twoInvanderDist = []
+
+
 
 class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureAgent and ReflexCaptureAgent)
 
@@ -113,6 +95,9 @@ class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureA
                 foods.append((food, openDirections))
                 # print("foods: ", foods)
         return foods
+
+
+
 
     def successorStates(self, state):
         """
@@ -355,7 +340,12 @@ class BaseAgent(CaptureAgent):  # this is my base agent (mimic based on captureA
                     cur_state[1].add(cur_state[0])
 
             if problem.isGoal(cur_state):
-
+                # if self.index == 2:
+                #     print("problem: ", problem)
+                #     print("starting: ", problem.startingState())
+                #     print(cur_state)
+                # print("path: ", path)
+                # print("---------------")
                 return path
             else:
 
@@ -423,6 +413,7 @@ class AstarTransform(BaseAgent):
         return (closestLocation, realdist)
 
     def chooseAction(self, gameState):
+
         cur_State = gameState.getAgentState(self.index)
         cur_Position = cur_State.getPosition()
         cur_Score = self.getScore(gameState)
@@ -437,52 +428,153 @@ class AstarTransform(BaseAgent):
         opponentTimer = self.opponentScaredTimer(gameState)
         capsuleList = self.getCapsules(gameState)
         distToDefender = self.distToNearestDefender(gameState)
+        # print("getScaredTimer: ",getScaredTimer)
 
-        if cur_State.isGhost() and len(invaders) > 0 and cur_State.isBraveGhost():
-            path = self.invaderSearch(gameState)
-            if path is None:
-                path = self.foodSearch(gameState)
-            return path
+        # if gameState.getTimeleft() > 1100:
+        if True:
+            # if no invader we focus on attacking
+            if len(invaders) < 1:
+                if len(self.safeFood) < 1 and len(capsuleList) != 0 and opponentTimer is not None:
+                    if opponentTimer < 10:
+                        problem = SearchCapsuleProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        return path[0]
 
-        elif len(self.getFood(gameState).asList()) > 1:
-            path = self.foodSearch(gameState)
-            return path
+                if (len(self.safeFood) > 0):
+                    problem = SearchSafeFoodProblem(gameState, self)
+                    path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                    if len(path) > 0:
+                        return path[0]
 
-        maxValue = max(values)
-        bestActions = [a for a, v in zip(actions, values) if v == maxValue]
-        return random.choice(bestActions)
-
-    def foodSearch(self, gameState):
-        path = []
-        if len(self.safeFood) > 0:
-            problem = SearchSafeFoodProblem(gameState, self)
-            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
-            if len(path) > 0:
-                return path[0]
-
-            else:
-                problem = EscapeToBorderProblem(gameState, self)
-                path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
-                if len(path) > 0:
+                if (len(self.safeFood) == 0):
+                    problem = SearchFoodProblem(gameState, self)
+                    path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
                     return path[0]
 
-        if len(path) == 0:
-            problem = SearchFoodProblem(gameState, self)
-            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
-            return path[0]
+                if distToDefender is not None:
+                    dist = distToDefender[0]
+                    time = distToDefender[1].getScaredTimer()
+                    if dist < 5 and time < 5:
 
-    def invaderSearch(self, gameState):
-        minDistTwo = (-1, -1)
+                        problem = EscapeToBorderProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        if len(path) > 0:
+                            return path[0]
+                        else:
+                            return 'Stop'
 
-        state = gameState.getAgentState(self.index)
-        position = state.getPosition()
+                # print("self.opponentScaredTimer(gameState): ", self.opponentScaredTimer(gameState))
+                if opponentTimer is not None:
+                    if opponentTimer > (40 / 2) and len(self.dangerFood) > 0:
+                        problem = SearchFoodInDangerCornerProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        return path[0]
+
+                if len(foodList) < 3 or gameState.getTimeleft() < self.getBorderlineDist(gameState) + 200:
+                    problem = EscapeToBorderProblem(gameState, self)
+                    path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                    if len(self.aStarSearch(problem, self.CoopHeuristic)) == 0:
+                        return path[0]
+                    else:
+                        return 'Stop'
+
+                problem = SearchFoodProblem(gameState, self)
+                path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                return path[0]
+
+
+            elif len(invaders) >0:
+                # print(self.index)
+                # print("DistToInvader: ", DistToInvader)
+                # print("_________________")
+                distToBoth = []
+                for invader in invaders:
+                    distToBoth.append(self.getMazeDistance(invader.getPosition(), cur_Position))
+                myDistToInvader = min(distToBoth)
+                teammateDistToInvader = float('inf')
+                if len(DistToInvader) == 0:
+                    DistToInvader.append(myDistToInvader)
+                else:
+                    teammateDistToInvader = DistToInvader[-1]
+                    DistToInvader.append(myDistToInvader)
+
+                # when there are invader and I am closer to the invader, we excute defendense strategy
+                if myDistToInvader < teammateDistToInvader:
+                    if gameState.getAgentState(self.index).getScaredTimer() == 0:
+                        # print("cur Postion: ", cur_Position)
+                        problem = SearchInvaderProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        return path[0]
+                else:  # otherwise I will keep attacking
+                    if len(self.safeFood) < 1 and len(capsuleList) != 0 and opponentTimer is not None:
+                        if opponentTimer < 10:
+                            problem = SearchCapsuleProblem(gameState, self)
+                            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                            return path[0]
+
+                    if (len(self.safeFood) > 0):
+                        problem = SearchSafeFoodProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        if len(path) > 0:
+                            return path[0]
+
+                    if (len(self.safeFood) == 0):
+                        problem = SearchFoodProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        return path[0]
+
+                    if distToDefender is not None:
+                        dist = distToDefender[0]
+                        time = distToDefender[1].getScaredTimer()
+                        if dist < 5 and time < 5:
+
+                            problem = EscapeToBorderProblem(gameState, self)
+                            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                            if len(path) > 0:
+                                return path[0]
+                            else:
+                                return 'Stop'
+
+                    # print("self.opponentScaredTimer(gameState): ", self.opponentScaredTimer(gameState))
+                    if opponentTimer is not None:
+                        if opponentTimer > (40 / 2) and len(self.dangerFood) > 0:
+                            problem = SearchFoodInDangerCornerProblem(gameState, self)
+                            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                            return path[0]
+
+                    if len(foodList) < 3 or gameState.getTimeleft() < self.getBorderlineDist(gameState) + 200:
+                        problem = EscapeToBorderProblem(gameState, self)
+                        path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                        if len(self.aStarSearch(problem, self.CoopHeuristic)) == 0:
+                            return path[0]
+                        else:
+                            return 'Stop'
+
+            else:
+                if gameState.getAgentState(self.index).getScaredTimer() == 0:
+                    # print("cur Postion: ", cur_Position)
+                    problem = SearchInvaderProblem(gameState, self)
+                    #self.findAgentClosestToInvader(invaders, gameState)
+                    return self.aStarSearch(problem, gameState, self.CoopHeuristic)[0]
+
+                problem = SearchFoodProblem(gameState, self)
+                path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                return path[0]
+
+            # print(len(invaders))
+
+            maxValue = max(values)
+            bestActions = [a for a, v in zip(actions, values) if v == maxValue]
+            return random.choice(bestActions)
+
+    """def findAgentClosestToInvader(self, invaders, gameState):
+        global two_invader_def
+        cur_State = gameState.getAgentState(self.index)
+        cur_Position = cur_State.getPosition()
 
         agentLocations = list()
-        agentLocations.append(position)
-        agentLocations.append(self.getSecondAgentLocation(gameState, position))
-
-        opponents = [gameState.getAgentState(opponent) for opponent in self.getOpponents(gameState)]
-        invaders = [invader for invader in opponents if invader.isPacman()]
+        agentLocations.append(cur_Position)
+        agentLocations.append(self.distToNearestDefender(gameState)[1].getPosition())
 
         dist_from_defenders_to_invaders = priorityQueue.PriorityQueue()
         for agent in agentLocations:
@@ -490,29 +582,46 @@ class AstarTransform(BaseAgent):
                 mazeDist = self.getMazeDistance(invader.getPosition(), agent)
                 dist_from_defenders_to_invaders.push((agent, invader, mazeDist), mazeDist)
 
-
         minDistOne = dist_from_defenders_to_invaders.pop()
-        if len(invaders) > 1:
-            minDistTwo = dist_from_defenders_to_invaders.pop()
+        minDistTwo = dist_from_defenders_to_invaders.pop()
+        if two_invader_def[0] != self.index:
+            #case 1 if each agent is close one of the invaders
+            if minDistOne[0] != minDistTwo[0] and minDistOne[1] != minDistTwo[1]:
+                if minDistOne[0] == cur_Position or minDistTwo[0] == cur_Position:
+                    problem = SearchInvaderProblem(gameState, self)
+                    path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
+                    return path[0]
 
-        if minDistOne[0] == position or minDistTwo[0] == position:
-            problem = SearchInvaderProblem(gameState, self)
-            path = self.aStarSearch(problem, gameState, self.CoopHeuristic)
-            return path[0]
 
-    def getSecondAgentLocation(self, gameState, position):
-        location = None
+                else:
+                    if minDistOne[0] != cur_Position:
+                        two_invader_def = (self.index,minDistOne[2])
+                    else:
+                        two_invader_def = (self.index, minDistTwo[2])
 
-        if self.red:
-            indexes = gameState.getRedTeamIndices()
+
+            # case 2 if one agent is closer to both invaders
+            if minDistOne[0] == minDistTwo[0] and minDistOne[1] != minDistTwo[1]:
+                if minDistOne[0] == cur_Position:
+                    # if our current agent is closer to both food
+
+                else:
+                    # if the other agent is closer to both foods
+
+            #case 3 both our agents are closer to one invader
+            if minDistOne[1] == minDistTwo[1] and minDistOne[0] == minDistTwo[0]:
+                if minDistOne[0] == cur_Position:
+
+
+            else:
+                #catch fallout
         else:
-            indexes = gameState.getBlueTeamIndices()
+            """
 
-        for index in indexes:
-            if index != self.index:
-                location = gameState.getAgentPosition(index)
 
-        return location
+
+
+
 
     def getFeatures(self, gameState, action):
         features = counter.Counter()
