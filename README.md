@@ -48,49 +48,6 @@ This makes it clear to the student what files they are allowed to change.
 However GitHub requires that all forks be public, and we don't want this for class assignments.
 The following section has instructions on making a private copy of this repo.
 
-### Making a Private Pacman Repo
-
-First, make a [new Github repository](https://github.com/new).
-You can name it whatever you want (you can even keep the name `pacman`).
-For this example, we will call our repository `cool-pacman`.
-Make sure to make the repository private and **do not** initialize the repository with a README.
-Private repositories are currently free on GitHub.
-After clicking "Create Repository", the next page should have the link to this new repository.
-For this example, we will use `https://github.com/eriq-augustine/cool-pacman.git`.
-
-Now, clone **this** pacman repo (the one that you are reading this README on):
-```
-git clone https://github.com/linqs/pacman.git
-cd pacman
-```
-If you are a cool kid with [ssh keys](https://help.github.com/en/articles/connecting-to-github-with-ssh), then you can use the ssh endpoint instead of the http endpoint listed above.
-
-If you accidentally already created a pacman fork, then you can just cd into the fork repository you already cloned.
-(Just make sure to delete the fork through the GitHub web interface after you finish these steps.)
-
-Next, we will change the cloned repository's remote url to point to our new repository.
-You can do this via the `git remote set-url` command:
-```
-git remote set-url origin https://github.com/eriq-augustine/cool-pacman.git
-```
-Or, you can just directly edit the `.git/config` file (the url under `[remote "origin"]`).
-
-Finally, you just need to push to your new repository:
-```
-git push
-```
-
-You're all set!
-You now have a private copy of this pacman repo.
-
-#### Pulling Changes from This Repo Into Your Fork
-
-Occasionally, you may need to pull changes/fixes from this repository.
-Doing so is super easy.
-Just do a `git pull` command and specify this repository as an argument:
-```
-git pull https://github.com/linqs/pacman.git
-```
 
 ### Acknowledgements
 
